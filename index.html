@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+<script src="/jquery-min.js"></script>
+<script src="/underscore-min.js"></script>
+<script src="/backbone-min.js"></script>
+<script>
+var App = { models: {}, collections: {}, views: {} };
+
+// A basic definition of a model. You can write more stuff
+// here like the heavy computation stuff and so on.
+App.models.Person = Backbone.Model.extend({
+  // Set the default fields and values here.
+  defaults: {
+    name: "Unnamed Person",
+    age: 0,
+    contact_number: null
+  }
+});
+
+// A basic definition of a collection. You can write more
+// stuff here like sorting, a different way to parse,
+// and more.
+// Formally, a composite.
+App.collections.Persons = Backbone.Collection.extend({
+  // Define which type an item is.
+  model: App.models.Person
+});
+
+App.views.App = Backbone.View.extend({
+  renderPerson: function(model) {
+    var view = new App.views.Person({model: model});
+    // Here is where the part where returning 'this'
+    // becomes useful.
+    this.$el.append(view.render().el);
+  },
+  render: function() {
+    App.collections.persons.each(this.renderPerson, this);
+
+    // Another convention is to return the instance itself
+    // so we can chain functions.
+    return this;
+  }
+});
+
+App.views.Person = Backbone.View.extend({
+  tagName: 'li',
+  initialize: function() {
+    // this is where we bind the data attribute events.
+    // The last argument 'this' binds the function to the
+    // context of this 'view'. So inside the function,
+    // the definition of 'this' is this instance of the
+    // view.
+    this.model.on('change:name', this.changeName, this);
+    this.model.on('change', this.changeAny, this);
+    // Doesn't necessarily have to be bound to this view's
+    // method. Could be an anonymous function.
+    this.model.on('change:age', function(model) {
+      console.log("CHANGED NAME");
+    });
+  },
+
+  // Bind view events to specific functions.
+  // Ala, $(this.$el).change(function() { ... });
+  events: {
+    'change input': 'changeValue'
+  },
+
+  changeValue: function(e) {
+    var $el = $(e.target);
+    var value = $el.val();
+    var field = $el.attr('name');
+
+    this.model.set(field, value);
+  },
+
+  changeAny: function(model) {
+    // This could contain a code that syncs the model
+    // with the backend (ala model.save());
+    // This can also contain code that validates all the
+    // fields.
+    console.log("A MODEL ATTRIBUTE CHANGED");
+  },
+
+  changeName: function(model) {
+    // While changeAny is triggered by all data-related
+    // changes, you can bind attribute specific ones for
+    // a more granular access.
+    console.log("MODEL NAME CHANGED");
+  },
+
+  render: function() {
+    // This can be improved by a proper template manager.
+    // Too lazy to setup one.
+    this.$el.html(_.template([
+      'Name: <input class="person name" name="name" value="<%= model.name %>"></input>',
+      '<br />',
+      'Number: <input class="person number" name="number" value="<%= model.contact_number %>"></input>'
+    ].join(''))({model: this.model.toJSON()}));
+    return this;
+  }
+});
+
+$(document).ready(function() {
+  // Instantiate the persons collection. Pass the data as
+  // an array.
+  App.collections.persons = new App.collections.Persons([
+    {name: "Jesse Panganiban", age: 21, contact_number: "09175595283"},
+    {name: "Barry Lavides", age: 24, contact_number: "I don't know"}
+  ]);
+
+  // Instantiate the view. The element we want to bind to
+  //  does not exist yet as of the definition of the class
+  // so we're passing the 'el' attribute here since it
+  // exists now (document.ready)
+  App.views.app = new App.views.App({
+    el: '#app'
+  // We're calling the render function. This is more of a
+  // convention than a feature. That's why it's defined
+  // up there.
+  }).render();
+});
+</script>
+</head>
+
+<body>
+<ul id=app>
+</ul>
+</body>
+</html>
